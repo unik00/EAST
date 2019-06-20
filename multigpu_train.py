@@ -4,7 +4,10 @@ import tensorflow as tf
 from tensorflow.contrib import slim
 
 tf.app.flags.DEFINE_integer('input_size', 512, '')
-tf.app.flags.DEFINE_integer('batch_size_per_gpu', 14, '')
+
+# change batch size from 14 to 8 due to memory limit
+tf.app.flags.DEFINE_integer('batch_size_per_gpu', 8, '')
+
 tf.app.flags.DEFINE_integer('num_readers', 16, '')
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, '')
 tf.app.flags.DEFINE_integer('max_steps', 100000, '')
@@ -134,7 +137,13 @@ def main(argv=None):
     if FLAGS.pretrained_model_path is not None:
         variable_restore_op = slim.assign_from_checkpoint_fn(FLAGS.pretrained_model_path, slim.get_trainable_variables(),
                                                              ignore_missing_vars=True)
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+    # changed gpu memory limit to 70%
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allocator_type = 'BFC'
+    config.gpu_options.per_process_gpu_memory_fraction = 0.70
+    config.gpu_options.allow_growth = True
+    
+    with tf.Session(config=config) as sess:
         if FLAGS.restore:
             print('continue training from previous checkpoint')
             ckpt = tf.train.latest_checkpoint(FLAGS.checkpoint_path)
